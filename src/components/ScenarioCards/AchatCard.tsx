@@ -2,10 +2,13 @@
 import { AchatParams } from "@/lib/types";
 import { SimulationResult } from "@/lib/types";
 import { fmt } from "@/lib/formatters";
+import { TAUX_ENDETTEMENT_MAX } from "@/lib/constants";
 
 interface Props {
   params: AchatParams;
   result: SimulationResult;
+  revenusMensuels: number;
+  chargesCredits: number;
   onChange: (updates: Partial<AchatParams>) => void;
 }
 
@@ -30,7 +33,12 @@ function Field({ label, value, onChange, min, max, step, suffix }: {
   );
 }
 
-export default function AchatCard({ params, result, onChange }: Props) {
+export default function AchatCard({ params, result, revenusMensuels, chargesCredits, onChange }: Props) {
+  // Calculs du taux d'endettement
+  const mensualiteTotale = result.coutMensuelTotalAchat + chargesCredits;
+  const tauxEndettement = (mensualiteTotale / revenusMensuels) * 100;
+  const capaciteMax = revenusMensuels * TAUX_ENDETTEMENT_MAX;
+  const montantMaxEmpruntable = capaciteMax - chargesCredits;
   return (
     <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 md:p-6">
       <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
@@ -129,6 +137,46 @@ export default function AchatCard({ params, result, onChange }: Props) {
           <div className="flex justify-between text-[10px]">
             <span className="text-[var(--muted)]">Entretien / travaux</span>
             <span>{fmt(result.entretienMensuel)}</span>
+          </div>
+        </div>
+
+        {/* Taux d'endettement */}
+        <div className={`border rounded-lg p-2.5 mt-2 ${
+          tauxEndettement > 35 
+            ? "bg-red-500/10 border-red-500/20" 
+            : tauxEndettement > 30 
+            ? "bg-orange-500/10 border-orange-500/20"
+            : "bg-[var(--green)]/10 border-[var(--green)]/20"
+        }`}>
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-sm font-medium">Taux d&apos;endettement</span>
+            <span className={`text-lg font-bold ${
+              tauxEndettement > 35 ? "text-red-500" : tauxEndettement > 30 ? "text-orange-500" : "text-[var(--green)]"
+            }`}>
+              {tauxEndettement.toFixed(1)}%
+            </span>
+          </div>
+          <div className="text-xs space-y-1">
+            <div className="flex justify-between">
+              <span className="text-[var(--muted)]">Mensualité crédit logement:</span>
+              <span>{fmt(result.coutMensuelTotalAchat)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[var(--muted)]">Charges crédits existants:</span>
+              <span>{fmt(chargesCredits)}</span>
+            </div>
+            <div className="flex justify-between border-t border-current/20 pt-1">
+              <span className="font-medium">Total mensuel:</span>
+              <span className="font-bold">{fmt(mensualiteTotale)}</span>
+            </div>
+          </div>
+          {tauxEndettement > 35 && (
+            <div className="mt-2 text-xs text-red-500">
+              ⚠️ Taux d&apos;endettement dépassé. Réduisez le prix du bien ou augmentez l&apos;apport.
+            </div>
+          )}
+          <div className="mt-2 text-xs text-[var(--muted)]">
+            Capacité maximale : {fmt(montantMaxEmpruntable)}/mois
           </div>
         </div>
 

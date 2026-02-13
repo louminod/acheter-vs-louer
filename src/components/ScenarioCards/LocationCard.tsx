@@ -7,12 +7,14 @@ import { TAUX_ENDETTEMENT_MAX } from "@/lib/constants";
 interface Props {
   params: LocationParams;
   result: SimulationResult;
+  revenusMensuels: number;
+  chargesCredits: number;
   coutMensuelAchat: number;
   horizonAns: number;
   onChange: (updates: Partial<LocationParams>) => void;
 }
 
-export default function LocationCard({ params, result, coutMensuelAchat, horizonAns, onChange }: Props) {
+export default function LocationCard({ params, result, revenusMensuels, chargesCredits, coutMensuelAchat, horizonAns, onChange }: Props) {
   return (
     <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 md:p-6">
       <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
@@ -52,36 +54,16 @@ export default function LocationCard({ params, result, coutMensuelAchat, horizon
           onChange={(e) => onChange({ augmentationLoyer: Number(e.target.value) })} />
       </div>
 
-      {/* Nouveaux champs de capacité de crédit */}
+      {/* Capacité d'endettement SCPI Crédit */}
       <div className="mb-4 p-4 bg-[var(--accent)]/10 border border-[var(--accent)]/20 rounded-lg">
         <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
           💳 Capacité d'endettement SCPI Crédit
         </h3>
         
-        <div className="mb-3">
-          <label className="flex justify-between text-sm mb-1">
-            <span className="text-[var(--muted)]">Revenus mensuels nets</span>
-            <span className="font-medium">{fmt(params.revenusMensuels)}/mois</span>
-          </label>
-          <input type="range" className="w-full" min={1000} max={10000} step={100}
-            value={params.revenusMensuels}
-            onChange={(e) => onChange({ revenusMensuels: Number(e.target.value) })} />
-        </div>
-
-        <div className="mb-3">
-          <label className="flex justify-between text-sm mb-1">
-            <span className="text-[var(--muted)]">Charges de crédits existants</span>
-            <span className="font-medium">{fmt(params.chargesCredits)}/mois</span>
-          </label>
-          <input type="range" className="w-full" min={0} max={3000} step={50}
-            value={params.chargesCredits}
-            onChange={(e) => onChange({ chargesCredits: Number(e.target.value) })} />
-        </div>
-
         <DebtRatioDisplay 
-          revenus={params.revenusMensuels} 
+          revenus={revenusMensuels} 
           loyerMensuel={params.loyerMensuel}
-          chargesCredits={params.chargesCredits}
+          chargesCredits={chargesCredits}
           investissementMensuel={result.investissementMensuel}
         />
       </div>
@@ -94,6 +76,8 @@ export default function LocationCard({ params, result, coutMensuelAchat, horizon
         <StrategyDisplay 
           investissementMensuel={result.investissementMensuel}
           locationParams={params}
+          revenusMensuels={revenusMensuels}
+          chargesCredits={chargesCredits}
           horizonAns={horizonAns}
         />
       </div>
@@ -128,10 +112,14 @@ export default function LocationCard({ params, result, coutMensuelAchat, horizon
 function StrategyDisplay({ 
   investissementMensuel, 
   locationParams,
+  revenusMensuels,
+  chargesCredits,
   horizonAns 
 }: { 
   investissementMensuel: number;
   locationParams: LocationParams;
+  revenusMensuels: number;
+  chargesCredits: number;
   horizonAns: number;
 }) {
   const strategy = getInvestmentStrategy();
@@ -140,9 +128,9 @@ function StrategyDisplay({
   let scpiCredit;
   try {
     scpiCredit = getScpiCreditDetails(investissementMensuel, {
-      revenus: locationParams.revenusMensuels,
+      revenus: revenusMensuels,
       loyer: locationParams.loyerMensuel,
-      chargesCredits: locationParams.chargesCredits,
+      chargesCredits: chargesCredits,
       horizon: horizonAns
     });
   } catch (error) {

@@ -20,9 +20,9 @@ export function useSimulation() {
       loyerMensuel: Math.round(DEFAULTS.prixBien * RATIO_LOYER_PRIX),
       augmentationLoyer: DEFAULTS.augmentationLoyer,
       apportInvesti: DEFAULTS.apport,
-      revenusMensuels: DEFAULTS.revenusMensuels,
-      chargesCredits: DEFAULTS.chargesCredits,
     },
+    revenusMensuels: DEFAULTS.revenusMensuels,
+    chargesCredits: DEFAULTS.chargesCredits,
     horizonAns: DEFAULTS.horizonAns,
   }));
 
@@ -49,5 +49,9 @@ export function useSimulation() {
     setParams((p) => ({ ...p, horizonAns }));
   };
 
-  return { params, result, updateAchat, updateLocation, setHorizon, setParams };
+  const updateProfile = (updates: { revenusMensuels?: number; chargesCredits?: number }) => {
+    setParams((p) => ({ ...p, ...updates }));
+  };
+
+  return { params, result, updateAchat, updateLocation, setHorizon, updateProfile, setParams };
 }

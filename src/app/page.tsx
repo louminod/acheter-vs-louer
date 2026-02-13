@@ -1,6 +1,7 @@
 "use client";
 import { useSimulation } from "@/hooks/useSimulation";
 import Hero from "@/components/Hero";
+import ProfileSection from "@/components/ProfileSection";
 import AchatCard from "@/components/ScenarioCards/AchatCard";
 import LocationCard from "@/components/ScenarioCards/LocationCard";
 import ComparisonResult from "@/components/ComparisonResult";
@@ -10,17 +11,31 @@ import CostBreakdown from "@/components/CostBreakdown";
 import ShareButton from "@/components/ShareButton";
 
 export default function Home() {
-  const { params, result, updateAchat, updateLocation, setHorizon } = useSimulation();
+  const { params, result, updateAchat, updateLocation, setHorizon, updateProfile } = useSimulation();
 
   return (
     <main className="max-w-6xl mx-auto px-4 py-8 md:py-12">
       <Hero result={result} horizonAns={params.horizonAns} onHorizonChange={setHorizon} />
 
+      <ProfileSection
+        revenusMensuels={params.revenusMensuels}
+        chargesCredits={params.chargesCredits}
+        onChange={updateProfile}
+      />
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <AchatCard params={params.achat} result={result} onChange={updateAchat} />
+        <AchatCard 
+          params={params.achat} 
+          result={result} 
+          revenusMensuels={params.revenusMensuels}
+          chargesCredits={params.chargesCredits}
+          onChange={updateAchat} 
+        />
         <LocationCard
           params={params.location}
           result={result}
+          revenusMensuels={params.revenusMensuels}
+          chargesCredits={params.chargesCredits}
           coutMensuelAchat={result.coutMensuelTotalAchat}
           horizonAns={params.horizonAns}
           onChange={updateLocation}

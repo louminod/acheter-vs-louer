@@ -196,7 +196,7 @@ function calcRendementBlended(scpiCredit: ScpiCreditDetails, moisActuel: number,
  * @returns Résultats détaillés mois par mois et totaux
  */
 export function runSimulation(params: SimulationParams): SimulationResult {
-  const { achat, location, horizonAns } = params;
+  const { achat, location, revenusMensuels, chargesCredits, horizonAns } = params;
   const totalMonths = horizonAns * 12;
   const dureeCreditMois = achat.dureeCredit * 12;
 
@@ -224,9 +224,9 @@ export function runSimulation(params: SimulationParams): SimulationResult {
   
   // Calcul des détails SCPI Crédit basé sur la capacité d'endettement
   const scpiCreditDebt = calculateDebtBasedScpiCredit(
-    location.revenusMensuels,
+    revenusMensuels,
     location.loyerMensuel,
-    location.chargesCredits,
+    chargesCredits,
     horizonAns
   );
   

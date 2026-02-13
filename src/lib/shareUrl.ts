@@ -11,7 +11,7 @@ export function encodeParams(p: SimulationParams): string {
     p.achat.prixBien, p.achat.apport, p.achat.tauxCredit, p.achat.dureeCredit,
     p.achat.surface, p.achat.isNeuf ? 1 : 0, p.achat.tauxRevalorisation,
     p.location.loyerMensuel, p.location.augmentationLoyer,
-    p.location.apportInvesti, p.location.revenusMensuels, p.location.chargesCredits, p.horizonAns,
+    p.location.apportInvesti, p.revenusMensuels, p.chargesCredits, p.horizonAns,
   ];
   const parts = KEYS.map((k, i) => `${k}=${vals[i]}`);
   return parts.join("&");
@@ -43,9 +43,9 @@ export function decodeParams(search: string): Partial<SimulationParams> | null {
       loyerMensuel: ly ?? px * 0.004,
       augmentationLoyer: al ?? DEFAULTS.augmentationLoyer,
       apportInvesti: ai ?? ap ?? DEFAULTS.apport,
-      revenusMensuels: rm ?? DEFAULTS.revenusMensuels,
-      chargesCredits: cc ?? DEFAULTS.chargesCredits,
     },
+    revenusMensuels: rm ?? DEFAULTS.revenusMensuels,
+    chargesCredits: cc ?? DEFAULTS.chargesCredits,
     horizonAns: hz ?? DEFAULTS.horizonAns,
   };
 }

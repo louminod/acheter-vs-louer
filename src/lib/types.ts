@@ -55,13 +55,13 @@ export interface LocationParams {
   loyerMensuel: number;
   augmentationLoyer: number; // annuel en %
   apportInvesti: number; // montant investi dès le départ
-  revenusMensuels: number; // revenus mensuels nets en euros
-  chargesCredits: number; // charges de crédits existants en euros/mois
 }
 
 export interface SimulationParams {
   achat: AchatParams;
   location: LocationParams;
+  revenusMensuels: number; // revenus mensuels nets en euros
+  chargesCredits: number; // charges de crédits existants en euros/mois
   horizonAns: number;
 }
 
