@@ -16,7 +16,9 @@ export default function DetailTable({ result, prixBien }: Props) {
     { label: "Valeur finale du bien", achat: fmt(result.monthly[result.monthly.length - 1].valeurBien), location: "—" },
     { label: "Loyers cumulés", achat: "—", location: fmt(result.loyersCumules) },
     { label: "Capital investi total", achat: "—", location: fmt(result.monthly[result.monthly.length - 1].capitalPlace) },
-    { label: "Patrimoine net final", achat: fmt(result.patrimoineNetAchat), location: fmt(result.patrimoineNetLocation), bold: true },
+    { label: "Patrimoine brut final", achat: fmt(result.patrimoineNetAchat), location: fmt(result.patrimoineNetLocation) },
+    { label: "Fiscalité à la revente", achat: fmt(result.taxCalculation.plusValueImmobiliere.impotTotal), location: fmt(result.taxCalculation.flatTaxInvestissement.taxeTotal), fiscal: true },
+    { label: "Patrimoine net après fiscalité", achat: fmt(result.patrimoineNetAchatApresFiscalite), location: fmt(result.patrimoineNetLocationApresFiscalite), bold: true },
   ];
 
   return (
@@ -33,10 +35,10 @@ export default function DetailTable({ result, prixBien }: Props) {
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.label} className={`border-b border-[var(--border)] ${(r as any).bold ? "font-bold text-base" : ""}`}>
+              <tr key={r.label} className={`border-b border-[var(--border)] ${(r as any).bold ? "font-bold text-base" : ""} ${(r as any).fiscal ? "text-red-500" : ""}`}>
                 <td className="py-2 text-[var(--muted)]">{r.label}</td>
-                <td className="py-2 text-right">{r.achat}</td>
-                <td className="py-2 text-right">{r.location}</td>
+                <td className={`py-2 text-right ${(r as any).fiscal ? "text-red-500" : ""}`}>{r.achat}</td>
+                <td className={`py-2 text-right ${(r as any).fiscal ? "text-red-500" : ""}`}>{r.location}</td>
               </tr>
             ))}
           </tbody>

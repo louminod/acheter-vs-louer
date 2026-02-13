@@ -2,14 +2,14 @@ import { SimulationParams } from "./types";
 import { DEFAULTS } from "./constants";
 
 const KEYS = [
-  "px", "ap", "tc", "dc", "sf", "nf", "rv",
+  "px", "ap", "tc", "dc", "sf", "nf", "rv", "rp",
   "ly", "al", "ai", "rm", "cc", "hz",
 ] as const;
 
 export function encodeParams(p: SimulationParams): string {
   const vals = [
     p.achat.prixBien, p.achat.apport, p.achat.tauxCredit, p.achat.dureeCredit,
-    p.achat.surface, p.achat.isNeuf ? 1 : 0, p.achat.tauxRevalorisation,
+    p.achat.surface, p.achat.isNeuf ? 1 : 0, p.achat.tauxRevalorisation, p.achat.isResidencePrincipale ? 1 : 0,
     p.location.loyerMensuel, p.location.augmentationLoyer,
     p.location.apportInvesti, p.revenusMensuels, p.chargesCredits, p.horizonAns,
   ];
@@ -23,7 +23,7 @@ export function decodeParams(search: string): Partial<SimulationParams> | null {
   const g = (k: string) => sp.has(k) ? Number(sp.get(k)) : undefined;
 
   const px = g("px"), ap = g("ap"), tc = g("tc"), dc = g("dc");
-  const sf = g("sf"), nf = g("nf"), rv = g("rv");
+  const sf = g("sf"), nf = g("nf"), rv = g("rv"), rp = g("rp");
   const ly = g("ly"), al = g("al"), ai = g("ai");
   const rm = g("rm"), cc = g("cc"), hz = g("hz");
 
@@ -38,6 +38,7 @@ export function decodeParams(search: string): Partial<SimulationParams> | null {
       surface: sf ?? DEFAULTS.surface,
       isNeuf: nf === 1,
       tauxRevalorisation: rv ?? DEFAULTS.tauxRevalorisation,
+      isResidencePrincipale: rp === undefined ? DEFAULTS.isResidencePrincipale : rp === 1,
     },
     location: {
       loyerMensuel: ly ?? px * 0.004,

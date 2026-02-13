@@ -100,6 +100,26 @@ export default function AchatCard({ params, result, revenusMensuels, chargesCred
         </div>
       </div>
 
+      <div className="mb-4">
+        <label className="flex justify-between text-sm mb-1">
+          <span className="text-[var(--muted)]">Usage du bien</span>
+        </label>
+        <div className="flex gap-2">
+          {[true, false].map((isResidencePrincipale) => (
+            <button key={String(isResidencePrincipale)}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+                params.isResidencePrincipale === isResidencePrincipale
+                  ? "bg-[var(--accent)] text-white"
+                  : "bg-[var(--card2)] text-[var(--muted)] hover:text-[var(--text)]"
+              }`}
+              onClick={() => onChange({ isResidencePrincipale })}
+            >
+              {isResidencePrincipale ? "Résidence principale" : "Investissement locatif"}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <Field label="Revalorisation annuelle" value={params.tauxRevalorisation}
         onChange={(v) => onChange({ tauxRevalorisation: v })}
         min={-2} max={6} step={0.5} suffix="%" />

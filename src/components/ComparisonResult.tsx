@@ -29,12 +29,13 @@ export default function ComparisonResult({ result, horizonAns }: Props) {
       </div>
 
       <Row label="Coût total" achat={fmt(result.coutTotalAchat)} location={fmt(result.coutTotalLocation)} />
-      <Row label="Patrimoine net final" achat={fmt(result.patrimoineNetAchat)} location={fmt(result.patrimoineNetLocation)} highlight />
+      <Row label="Patrimoine brut final" achat={fmt(result.patrimoineNetAchat)} location={fmt(result.patrimoineNetLocation)} />
+      <Row label="Patrimoine net après fiscalité" achat={fmt(result.patrimoineNetAchatApresFiscalite)} location={fmt(result.patrimoineNetLocationApresFiscalite)} highlight />
 
       <div className="grid grid-cols-3 gap-4 py-3 text-sm">
-        <span className="text-[var(--muted)]">Différence</span>
+        <span className="text-[var(--muted)]">Différence (net)</span>
         <span className="col-span-2 text-center font-bold text-[var(--orange)]">
-          {fmt(Math.abs(result.patrimoineNetAchat - result.patrimoineNetLocation))} en faveur de {result.patrimoineNetAchat > result.patrimoineNetLocation ? "l'achat" : "la location"}
+          {fmt(Math.abs(result.patrimoineNetAchatApresFiscalite - result.patrimoineNetLocationApresFiscalite))} en faveur de {result.patrimoineNetAchatApresFiscalite > result.patrimoineNetLocationApresFiscalite ? "l'achat" : "la location"}
         </span>
       </div>
 
@@ -43,6 +44,44 @@ export default function ComparisonResult({ result, horizonAns }: Props) {
           📍 Point de croisement : après {Math.ceil(result.pointCroisement / 12)} ans ({result.pointCroisement} mois)
         </p>
       )}
+
+      {/* Section fiscalité */}
+      <div className="mt-4 pt-4 border-t border-[var(--border)] space-y-2">
+        <h3 className="text-sm font-semibold text-[var(--muted)]">💸 Impact fiscal</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <div className="bg-[var(--card2)] rounded-lg p-3">
+            <p className="font-medium text-[var(--accent)] mb-1">🏠 Achat - Plus-value immobilière</p>
+            {result.taxCalculation.plusValueImmobiliere.isExoneree ? (
+              <p className="text-[var(--green)]">✓ Exonérée (résidence principale)</p>
+            ) : (
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <span>Plus-value :</span>
+                  <span>{fmt(result.taxCalculation.plusValueImmobiliere.plusValueBrute)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Impôt total (36.2%) :</span>
+                  <span className="text-red-500">{fmt(result.taxCalculation.plusValueImmobiliere.impotTotal)}</span>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <div className="bg-[var(--card2)] rounded-lg p-3">
+            <p className="font-medium text-[var(--green)] mb-1">📈 Location - Flat tax 30%</p>
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <span>Gains totaux :</span>
+                <span>{fmt(result.taxCalculation.flatTaxInvestissement.gainsAV + result.taxCalculation.flatTaxInvestissement.gainsPER + result.taxCalculation.flatTaxInvestissement.gainsSCPI)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Flat tax :</span>
+                <span className="text-red-500">{fmt(result.taxCalculation.flatTaxInvestissement.taxeTotal)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

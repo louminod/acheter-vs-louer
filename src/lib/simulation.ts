@@ -4,6 +4,7 @@ import {
   MonthlyData,
   ScpiCreditDetails,
   InvestmentStrategy,
+  TaxCalculation,
 } from "./types";
 import {
   TAUX_NOTAIRE_ANCIEN,
@@ -16,6 +17,7 @@ import {
   INVESTMENT_STRATEGY,
   PRIX_PART_SCPI,
   TAUX_ENDETTEMENT_MAX,
+  FISCAL_CONSTANTS,
 } from "./constants";
 
 /**
@@ -180,6 +182,156 @@ function calcRendementBlended(scpiCredit: ScpiCreditDetails, moisActuel: number,
   }
   
   return rendementAV + rendementPER + rendementSCPICash + rendementSCPICredit;
+}
+
+/**
+ * Calcule la plus-value immobilière et l'impôt dû à la revente
+ * @param prixAchat - Prix d'achat du bien (hors frais)
+ * @param prixVente - Prix de vente du bien
+ * @param anneesDetention - Nombre d'années de détention
+ * @param isResidencePrincipale - Si c'est la résidence principale (exonéré)
+ * @returns Détails de la plus-value et impôts dus
+ */
+function calcPlusValueImmobiliere(
+  prixAchat: number,
+  prixVente: number,
+  anneesDetention: number,
+  isResidencePrincipale: boolean = false
+): TaxCalculation['plusValueImmobiliere'] {
+  const fiscal = FISCAL_CONSTANTS.plusValue;
+  const plusValueBrute = Math.max(0, prixVente - prixAchat);
+  
+  // Résidence principale = exonération totale
+  if (isResidencePrincipale) {
+    return {
+      plusValueBrute,
+      abattementIR: 100,
+      abattementPS: 100,
+      baseImposableIR: 0,
+      baseImposablePS: 0,
+      impotIR: 0,
+      impotPS: 0,
+      impotTotal: 0,
+      isExoneree: true,
+    };
+  }
+  
+  // Calcul des abattements selon la durée de détention
+  let abattementIR = 0;
+  let abattementPS = 0;
+  
+  if (anneesDetention >= fiscal.exonerationIRAns) {
+    // Exonération totale IR après 22 ans
+    abattementIR = 100;
+  } else if (anneesDetention >= 6) {
+    // Abattement progressif à partir de la 6ème année
+    const anneesAbattement = anneesDetention - 5;
+    if (anneesDetention < 22) {
+      abattementIR = Math.min(100, anneesAbattement * fiscal.abattementIRParAn);
+    } else {
+      // Année 22: abattement spécial
+      abattementIR = 16 * fiscal.abattementIRParAn + fiscal.abattementIRAnnee22;
+    }
+  }
+  
+  if (anneesDetention >= fiscal.exonerationPSAns) {
+    // Exonération totale PS après 30 ans
+    abattementPS = 100;
+  } else if (anneesDetention >= 6) {
+    // Abattement progressif à partir de la 6ème année
+    const anneesAbattement = anneesDetention - 5;
+    if (anneesDetention < 22) {
+      abattementPS = Math.min(100, anneesAbattement * fiscal.abattementPSParAn);
+    } else if (anneesDetention === 22) {
+      abattementPS = 16 * fiscal.abattementPSParAn + fiscal.abattementPSAnnee22;
+    } else {
+      // Années 23 et suivantes
+      abattementPS = 16 * fiscal.abattementPSParAn + fiscal.abattementPSAnnee22 + 
+                     (anneesDetention - 22) * fiscal.abattementPSAnnee23;
+    }
+    abattementPS = Math.min(100, abattementPS);
+  }
+  
+  // Application des abattements
+  const baseImposableIR = plusValueBrute * (1 - abattementIR / 100);
+  const baseImposablePS = plusValueBrute * (1 - abattementPS / 100);
+  
+  // Calcul des impôts
+  const impotIR = baseImposableIR * (fiscal.tauxIR / 100);
+  const impotPS = baseImposablePS * (fiscal.tauxPS / 100);
+  const impotTotal = impotIR + impotPS;
+  
+  return {
+    plusValueBrute,
+    abattementIR,
+    abattementPS,
+    baseImposableIR,
+    baseImposablePS,
+    impotIR,
+    impotPS,
+    impotTotal,
+    isExoneree: impotTotal === 0,
+  };
+}
+
+/**
+ * Calcule la flat tax sur les gains d'investissement à la revente
+ * @param capitalInitialAV - Capital initial investi en AV
+ * @param capitalFinalAV - Capital final AV
+ * @param capitalInitialPER - Capital initial investi en PER
+ * @param capitalFinalPER - Capital final PER
+ * @param capitalInitialSCPI - Capital initial investi en SCPI Cash
+ * @param capitalFinalSCPI - Capital final SCPI Cash
+ * @param dividendesCumulesSCPI - Dividendes SCPI perçus sur la période
+ * @param horizonAns - Horizon de la simulation en années
+ * @returns Détails de la flat tax due
+ */
+function calcFlatTaxInvestissement(
+  capitalInitialAV: number,
+  capitalFinalAV: number,
+  capitalInitialPER: number,
+  capitalFinalPER: number,
+  capitalInitialSCPI: number,
+  capitalFinalSCPI: number,
+  dividendesCumulesSCPI: number,
+  horizonAns: number
+): TaxCalculation['flatTaxInvestissement'] {
+  const fiscal = FISCAL_CONSTANTS.flatTax;
+  
+  // Calcul des gains
+  const gainsAV = Math.max(0, capitalFinalAV - capitalInitialAV);
+  const gainsPER = Math.max(0, capitalFinalPER - capitalInitialPER);
+  const gainsSCPI = Math.max(0, capitalFinalSCPI - capitalInitialSCPI) + dividendesCumulesSCPI;
+  
+  // Calcul des taxes
+  let taxeAV: number;
+  if (horizonAns >= 8) {
+    // AV après 8 ans: taux réduit + abattement
+    const abattement = fiscal.abattementAVSingle; // Supposons un célibataire
+    const gainsImposablesAV = Math.max(0, gainsAV - abattement);
+    taxeAV = gainsImposablesAV * (fiscal.tauxAVApres8Ans / 100);
+  } else {
+    // AV avant 8 ans: flat tax standard
+    taxeAV = gainsAV * (fiscal.tauxStandard / 100);
+  }
+  
+  // PER: flat tax standard sur les gains
+  const taxePER = gainsPER * (fiscal.tauxStandard / 100);
+  
+  // SCPI: flat tax sur dividendes + gains de revalo
+  const taxeSCPI = gainsSCPI * (fiscal.tauxStandard / 100);
+  
+  const taxeTotal = taxeAV + taxePER + taxeSCPI;
+  
+  return {
+    gainsAV,
+    gainsPER,
+    gainsSCPI,
+    taxeAV,
+    taxePER,
+    taxeSCPI,
+    taxeTotal,
+  };
 }
 
 /**
@@ -450,6 +602,41 @@ export function runSimulation(params: SimulationParams): SimulationResult {
   const last = monthly[monthly.length - 1];
   const rendementsCumules = last.patrimoineLocation - location.apportInvesti - loyersCumules;
 
+  // === CALCULS FISCAUX ===
+  
+  // Plus-value immobilière (achat)
+  const plusValueImmobiliere = calcPlusValueImmobiliere(
+    achat.prixBien,
+    last.valeurBien,
+    horizonAns,
+    achat.isResidencePrincipale
+  );
+  
+  // Flat tax sur investissements (location)
+  // Calcul des capitaux initiaux et gains de chaque enveloppe
+  const capitalInitialTotalAV = apportAV;
+  const capitalInitialTotalPER = apportPER;
+  const capitalInitialTotalSCPI = apportSCPICash;
+  
+  // Estimation des dividendes SCPI perçus sur la période
+  const dividendesMensuelsSCPI = capitalSCPICash * (investmentAllocationAdjusted.scpiCash.rendementDividendes / 100 / 12);
+  const dividendesCumulesSCPI = dividendesMensuelsSCPI * totalMonths;
+  
+  const flatTaxInvestissement = calcFlatTaxInvestissement(
+    capitalInitialTotalAV,
+    capitalAV,
+    capitalInitialTotalPER,
+    capitalPER,
+    capitalInitialTotalSCPI,
+    capitalSCPICash,
+    dividendesCumulesSCPI,
+    horizonAns
+  );
+  
+  // Patrimoine net après fiscalité
+  const patrimoineNetAchatApresFiscalite = last.patrimoineAchat - plusValueImmobiliere.impotTotal;
+  const patrimoineNetLocationApresFiscalite = last.patrimoineLocation - flatTaxInvestissement.taxeTotal;
+
   return {
     monthly,
     coutTotalAchat,
@@ -471,6 +658,13 @@ export function runSimulation(params: SimulationParams): SimulationResult {
     loyersCumules,
     rendementsCumules,
     pointCroisement,
+    // Nouveaux champs fiscaux
+    taxCalculation: {
+      plusValueImmobiliere,
+      flatTaxInvestissement,
+    },
+    patrimoineNetAchatApresFiscalite,
+    patrimoineNetLocationApresFiscalite,
   };
 }
 

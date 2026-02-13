@@ -6,6 +6,7 @@ export interface AchatParams {
   surface: number; // m²
   isNeuf: boolean;
   tauxRevalorisation: number; // annuel en %
+  isResidencePrincipale: boolean; // exonération de plus-value immobilière
 }
 
 /**
@@ -77,6 +78,31 @@ export interface MonthlyData {
   capitalPlace: number;
 }
 
+export interface TaxCalculation {
+  // Plus-value immobilière (achat)
+  plusValueImmobiliere: {
+    plusValueBrute: number; // prix vente - prix achat
+    abattementIR: number; // % d'abattement appliqué IR
+    abattementPS: number; // % d'abattement appliqué PS
+    baseImposableIR: number; // plus-value après abattement IR
+    baseImposablePS: number; // plus-value après abattement PS
+    impotIR: number; // montant IR dû
+    impotPS: number; // montant PS dû
+    impotTotal: number; // total des impôts
+    isExoneree: boolean; // résidence principale ou durée > seuils
+  };
+  // Flat tax sur investissements (location)
+  flatTaxInvestissement: {
+    gainsAV: number; // gains assurance vie
+    gainsPER: number; // gains PER
+    gainsSCPI: number; // gains SCPI (dividendes + revalo)
+    taxeAV: number; // taxe sur AV
+    taxePER: number; // taxe sur PER
+    taxeSCPI: number; // taxe sur SCPI
+    taxeTotal: number; // total flat tax
+  };
+}
+
 export interface SimulationResult {
   monthly: MonthlyData[];
   // Totals
@@ -101,4 +127,8 @@ export interface SimulationResult {
   loyersCumules: number;
   rendementsCumules: number;
   pointCroisement: number | null; // mois où location dépasse achat (ou inverse)
+  // Fiscalité
+  taxCalculation: TaxCalculation;
+  patrimoineNetAchatApresFiscalite: number; // patrimoine achat après plus-value
+  patrimoineNetLocationApresFiscalite: number; // patrimoine location après flat tax
 }

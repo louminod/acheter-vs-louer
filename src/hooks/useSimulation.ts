@@ -15,6 +15,7 @@ export function useSimulation() {
       surface: DEFAULTS.surface,
       isNeuf: DEFAULTS.isNeuf,
       tauxRevalorisation: DEFAULTS.tauxRevalorisation,
+      isResidencePrincipale: DEFAULTS.isResidencePrincipale,
     },
     location: {
       loyerMensuel: Math.round(DEFAULTS.prixBien * RATIO_LOYER_PRIX),
