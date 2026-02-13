@@ -34,9 +34,10 @@ function Field({ label, value, onChange, min, max, step, suffix }: {
 }
 
 export default function AchatCard({ params, result, revenusMensuels, chargesCredits, onChange }: Props) {
-  // Calculs du taux d'endettement
-  const mensualiteTotale = result.coutMensuelTotalAchat + chargesCredits;
-  const tauxEndettement = (mensualiteTotale / revenusMensuels) * 100;
+  // Calculs du taux d'endettement (uniquement mensualité crédit + assurance emprunteur)
+  const mensualiteCredit = result.mensualiteCreditMensuel + result.assuranceEmprunteurMensuel;
+  const totalCredits = mensualiteCredit + chargesCredits;
+  const tauxEndettement = (totalCredits / revenusMensuels) * 100;
   const capaciteMax = revenusMensuels * TAUX_ENDETTEMENT_MAX;
   const montantMaxEmpruntable = capaciteMax - chargesCredits;
   return (
@@ -158,16 +159,18 @@ export default function AchatCard({ params, result, revenusMensuels, chargesCred
           </div>
           <div className="text-xs space-y-1">
             <div className="flex justify-between">
-              <span className="text-[var(--muted)]">Mensualité crédit logement:</span>
-              <span>{fmt(result.coutMensuelTotalAchat)}</span>
+              <span className="text-[var(--muted)]">Mensualité crédit + assurance:</span>
+              <span>{fmt(mensualiteCredit)}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-[var(--muted)]">Charges crédits existants:</span>
-              <span>{fmt(chargesCredits)}</span>
-            </div>
+            {chargesCredits > 0 && (
+              <div className="flex justify-between">
+                <span className="text-[var(--muted)]">Charges crédits existants:</span>
+                <span>{fmt(chargesCredits)}</span>
+              </div>
+            )}
             <div className="flex justify-between border-t border-current/20 pt-1">
-              <span className="font-medium">Total mensuel:</span>
-              <span className="font-bold">{fmt(mensualiteTotale)}</span>
+              <span className="font-medium">Total crédits:</span>
+              <span className="font-bold">{fmt(totalCredits)}</span>
             </div>
           </div>
           {tauxEndettement > 35 && (
