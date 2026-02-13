@@ -19,8 +19,8 @@ export function useSimulation() {
     location: {
       loyerMensuel: Math.round(DEFAULTS.prixBien * RATIO_LOYER_PRIX),
       augmentationLoyer: DEFAULTS.augmentationLoyer,
-      rendementPlacement: DEFAULTS.rendementPlacement,
       apportInvesti: DEFAULTS.apport,
+      // rendementPlacement removed - now computed automatically
     },
     horizonAns: DEFAULTS.horizonAns,
   }));

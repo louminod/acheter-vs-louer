@@ -7,7 +7,7 @@ export const DEFAULTS = {
   isNeuf: false,
   tauxRevalorisation: 2,
   augmentationLoyer: 2,
-  rendementPlacement: 4,
+  rendementPlacement: 4, // DEPRECATED - remplacé par stratégie mixte
   horizonAns: 25,
 };
 
@@ -20,3 +20,30 @@ export const TAUX_ASSURANCE_PNO = 0.002; // 0.2% du prix/an
 export const TAUX_ENTRETIEN = 0.01; // 1% du prix/an
 export const TAUX_ASSURANCE_EMPRUNTEUR = 0.003; // 0.3% du capital/an
 export const RATIO_LOYER_PRIX = 0.004; // loyer mensuel ≈ 0.4% du prix
+
+// Stratégie d'investissement blended
+export const INVESTMENT_STRATEGY = {
+  assuranceVie: {
+    allocation: 30, // %
+    rendement: 4, // % net/an
+  },
+  per: {
+    allocation: 20, // %
+    rendement: 4, // % net/an  
+  },
+  scpiCash: {
+    allocation: 25, // %
+    rendementDividendes: 5.5, // % dividendes/an
+    rendementRevalo: 1, // % revalorisation/an
+  },
+  scpiCredit: {
+    allocation: 25, // %
+    rendementDividendes: 5.5, // % dividendes/an
+    rendementRevalo: 1, // % revalorisation/an
+    tauxCredit: 5.35, // % crédit/an
+    dureeCreditAns: 25, // années
+  },
+} as const;
+
+// Prix SCPI moyen pour calculs (€ par part)
+export const PRIX_PART_SCPI = 200;
