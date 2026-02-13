@@ -12,6 +12,7 @@ export interface LocationParams {
   loyerMensuel: number;
   augmentationLoyer: number; // annuel en %
   rendementPlacement: number; // annuel net en %
+  apportInvesti: number; // montant investi dès le départ
 }
 
 export interface SimulationParams {

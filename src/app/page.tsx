@@ -21,7 +21,7 @@ export default function Home() {
         <LocationCard
           params={params.location}
           result={result}
-          apport={params.achat.apport}
+          coutMensuelAchat={result.coutMensuelTotalAchat}
           onChange={updateLocation}
         />
       </div>

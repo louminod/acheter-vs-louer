@@ -47,7 +47,7 @@ export function runSimulation(params: SimulationParams): SimulationResult {
   const monthly: MonthlyData[] = [];
   let capitalRestantDu = capitalEmprunte;
   let valeurBien = achat.prixBien;
-  let capitalPlace = achat.apport; // L'apport est investi pour le locataire
+  let capitalPlace = location.apportInvesti; // Montant investi dès le départ par le locataire
   let coutTotalAchat = achat.apport + fraisNotaire; // Apport + frais initiaux
   let coutTotalLocation = 0;
   let loyersCumules = 0;

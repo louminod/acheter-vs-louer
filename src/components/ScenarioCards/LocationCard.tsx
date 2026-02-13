@@ -6,11 +6,11 @@ import { fmt } from "@/lib/formatters";
 interface Props {
   params: LocationParams;
   result: SimulationResult;
-  apport: number;
+  coutMensuelAchat: number;
   onChange: (updates: Partial<LocationParams>) => void;
 }
 
-export default function LocationCard({ params, result, apport, onChange }: Props) {
+export default function LocationCard({ params, result, coutMensuelAchat, onChange }: Props) {
   return (
     <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 md:p-6">
       <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
@@ -19,6 +19,16 @@ export default function LocationCard({ params, result, apport, onChange }: Props
       <p className="text-xs text-[var(--muted)] mb-4">
         Vous louez et investissez la différence entre votre capacité d&apos;endettement et le loyer.
       </p>
+
+      <div className="mb-4">
+        <label className="flex justify-between text-sm mb-1">
+          <span className="text-[var(--muted)]">Apport investi dès le départ</span>
+          <span className="font-medium">{fmt(params.apportInvesti)}</span>
+        </label>
+        <input type="range" className="w-full" min={0} max={200000} step={1000}
+          value={params.apportInvesti}
+          onChange={(e) => onChange({ apportInvesti: Number(e.target.value) })} />
+      </div>
 
       <div className="mb-4">
         <label className="flex justify-between text-sm mb-1">
@@ -53,12 +63,8 @@ export default function LocationCard({ params, result, apport, onChange }: Props
       {/* Résumé calculé */}
       <div className="mt-4 pt-4 border-t border-[var(--border)] space-y-2 text-sm">
         <div className="flex justify-between">
-          <span className="text-[var(--muted)]">Apport investi dès le départ</span>
-          <span>{fmt(apport)}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-[var(--muted)]">Capacité d&apos;endettement</span>
-          <span>{fmt(result.mensualiteCredit)}/mois</span>
+          <span className="text-[var(--muted)]">Coût mensuel achat (capacité)</span>
+          <span>{fmt(coutMensuelAchat)}/mois</span>
         </div>
         <div className="flex justify-between">
           <span className="text-[var(--muted)]">Loyer</span>
@@ -70,7 +76,7 @@ export default function LocationCard({ params, result, apport, onChange }: Props
         </div>
         <div className="bg-[var(--green)]/10 border border-[var(--green)]/20 rounded-lg p-2.5">
           <p className="text-[10px] text-[var(--muted)]">
-            💡 Chaque mois, la différence entre votre capacité d&apos;endettement ({fmt(result.mensualiteCredit)}) et votre loyer ({fmt(params.loyerMensuel)}) est placée à {params.rendementPlacement}% net. L&apos;apport de {fmt(apport)} est également investi dès le départ.
+            💡 Chaque mois, la différence entre le coût de l&apos;achat ({fmt(coutMensuelAchat)}) et votre loyer ({fmt(params.loyerMensuel)}) est placée à {params.rendementPlacement}% net. L&apos;apport de {fmt(params.apportInvesti)} est également investi dès le départ.
           </p>
         </div>
       </div>
