@@ -20,7 +20,8 @@ export function useSimulation() {
       loyerMensuel: Math.round(DEFAULTS.prixBien * RATIO_LOYER_PRIX),
       augmentationLoyer: DEFAULTS.augmentationLoyer,
       apportInvesti: DEFAULTS.apport,
-      // rendementPlacement removed - now computed automatically
+      revenusMensuels: DEFAULTS.revenusMensuels,
+      chargesCredits: DEFAULTS.chargesCredits,
     },
     horizonAns: DEFAULTS.horizonAns,
   }));

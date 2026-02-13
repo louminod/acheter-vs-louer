@@ -15,6 +15,7 @@ import {
   TAUX_ASSURANCE_EMPRUNTEUR,
   INVESTMENT_STRATEGY,
   PRIX_PART_SCPI,
+  TAUX_ENDETTEMENT_MAX,
 } from "./constants";
 
 /**
@@ -31,15 +32,92 @@ function calcMensualite(capital: number, tauxAnnuel: number, dureeMois: number):
 }
 
 /**
+ * Calcule le montant d'emprunt SCPI à partir d'une mensualité donnée
+ * @param mensualiteCredit - Mensualité de crédit disponible (incluant assurance)
+ * @param tauxAnnuel - Taux d'intérêt annuel en pourcentage
+ * @param dureeMois - Durée du prêt en mois
+ * @param tauxAssurance - Taux d'assurance annuel en pourcentage (défaut: 0.3%)
+ * @returns Montant pouvant être emprunté
+ */
+function calcMontantEmpruntFromMensualite(
+  mensualiteCredit: number, 
+  tauxAnnuel: number, 
+  dureeMois: number,
+  tauxAssurance: number = 0.3
+): number {
+  const tauxMensuelCredit = tauxAnnuel / 100 / 12;
+  const tauxMensuelAssurance = tauxAssurance / 100 / 12;
+  const tauxMensuelTotal = tauxMensuelCredit + tauxMensuelAssurance;
+  
+  if (tauxMensuelTotal === 0) return mensualiteCredit * dureeMois;
+  
+  // Formule inversée: Capital = Mensualité / (taux_mensuel / (1 - (1+taux_mensuel)^(-durée)))
+  const facteur = tauxMensuelTotal / (1 - Math.pow(1 + tauxMensuelTotal, -dureeMois));
+  return mensualiteCredit / facteur;
+}
+
+/**
+ * Calcule la capacité d'emprunt SCPI basée sur le taux d'endettement
+ * @param revenusMensuels - Revenus nets mensuels en euros
+ * @param loyerMensuel - Loyer mensuel en euros
+ * @param chargesCreditsExistants - Charges de crédits existants en euros/mois
+ * @param horizonAns - Horizon du crédit en années
+ * @returns Détails du crédit SCPI ou null si non viable
+ */
+export function calculateDebtBasedScpiCredit(
+  revenusMensuels: number,
+  loyerMensuel: number,
+  chargesCreditsExistants: number,
+  horizonAns: number
+): {
+  montantEmpruntSCPI: number;
+  mensualiteAvecAssurance: number;
+  dividendesMensuels: number;
+  effortNet: number;
+} | null {
+  const capaciteMensuelle = revenusMensuels * TAUX_ENDETTEMENT_MAX;
+  const disponiblePourSCPI = capaciteMensuelle - loyerMensuel - chargesCreditsExistants;
+  
+  if (disponiblePourSCPI <= 0) {
+    return null;
+  }
+  
+  const dureeMois = horizonAns * 12;
+  const montantEmpruntSCPI = calcMontantEmpruntFromMensualite(
+    disponiblePourSCPI,
+    INVESTMENT_STRATEGY.scpiCredit.tauxCredit,
+    dureeMois,
+    0.3 // 0.3% d'assurance emprunteur
+  );
+  
+  const nombreParts = montantEmpruntSCPI / PRIX_PART_SCPI;
+  const dividendesMensuels = nombreParts * PRIX_PART_SCPI * (INVESTMENT_STRATEGY.scpiCredit.rendementDividendes / 100 / 12);
+  
+  const mensualiteCredit = calcMensualite(montantEmpruntSCPI, INVESTMENT_STRATEGY.scpiCredit.tauxCredit, dureeMois);
+  const assuranceMensuelle = montantEmpruntSCPI * (0.3 / 100 / 12);
+  const mensualiteAvecAssurance = mensualiteCredit + assuranceMensuelle;
+  
+  const effortNet = mensualiteAvecAssurance - dividendesMensuels;
+  
+  return {
+    montantEmpruntSCPI,
+    mensualiteAvecAssurance,
+    dividendesMensuels,
+    effortNet,
+  };
+}
+
+/**
  * Calcule les détails du SCPI crédit basé sur l'effort mensuel disponible
  * Résout l'équation: effort = mensualité_crédit - dividendes_SCPI
  * @param effortMensuel - Montant mensuel disponible pour l'effort net (mensualité moins dividendes)
+ * @param dureeCreditAns - Durée du crédit en années (maintenant paramétrable)
  * @returns Détails complets de l'opération SCPI crédit
  * @throws Error si les dividendes dépassent la mensualité (cas limite non viable)
  */
-function calcScpiCreditDetails(effortMensuel: number): ScpiCreditDetails {
+function calcScpiCreditDetails(effortMensuel: number, dureeCreditAns: number = 25): ScpiCreditDetails {
   const strategy = INVESTMENT_STRATEGY.scpiCredit;
-  const dureeMois = strategy.dureeCreditAns * 12;
+  const dureeMois = dureeCreditAns * 12;
   const tauxMensuel = strategy.tauxCredit / 100 / 12;
   const dividendeMensuel = (strategy.rendementDividendes / 100) / 12;
 
@@ -77,7 +155,7 @@ function calcScpiCreditDetails(effortMensuel: number): ScpiCreditDetails {
  * @param moisActuel - Mois actuel de la simulation (pour déterminer la phase SCPI)
  * @returns Rendement annuel pondéré en pourcentage
  */
-function calcRendementBlended(scpiCredit: ScpiCreditDetails, moisActuel: number): number {
+function calcRendementBlended(scpiCredit: ScpiCreditDetails, moisActuel: number, horizonAns: number): number {
   const strategy = INVESTMENT_STRATEGY;
   
   // AV et PER: rendements simples
@@ -88,9 +166,10 @@ function calcRendementBlended(scpiCredit: ScpiCreditDetails, moisActuel: number)
   const rendementSCPICash = (strategy.scpiCash.allocation / 100) * 
     (strategy.scpiCash.rendementDividendes + strategy.scpiCash.rendementRevalo);
   
-  // SCPI Crédit: dépend de la phase
+  // SCPI Crédit: dépend de la phase (durée = horizon)
   let rendementSCPICredit: number;
-  if (moisActuel <= scpiCredit.finCreditMois) {
+  const finCreditMois = horizonAns * 12;
+  if (moisActuel <= finCreditMois) {
     // Phase crédit: rendement effectif réduit par l'effort
     // Approximation: seuls les dividendes nets participent au rendement
     rendementSCPICredit = (strategy.scpiCredit.allocation / 100) * strategy.scpiCredit.rendementRevalo;
@@ -141,17 +220,101 @@ export function runSimulation(params: SimulationParams): SimulationResult {
   const loyerInitial = location.loyerMensuel;
   const investissementMensuelInitial = Math.max(0, coutMensuelTotalAchat - loyerInitial);
 
-  // === NOUVELLE STRATÉGIE D'INVESTISSEMENT BLENDED ===
+  // === NOUVELLE STRATÉGIE D'INVESTISSEMENT BLENDED AVEC CALCUL DETTE ===
   
-  // Calcul des détails SCPI Crédit basé sur l'allocation
-  const allocationSCPICredit = investissementMensuelInitial * (INVESTMENT_STRATEGY.scpiCredit.allocation / 100);
-  const scpiCredit = calcScpiCreditDetails(allocationSCPICredit);
+  // Calcul des détails SCPI Crédit basé sur la capacité d'endettement
+  const scpiCreditDebt = calculateDebtBasedScpiCredit(
+    location.revenusMensuels,
+    location.loyerMensuel,
+    location.chargesCredits,
+    horizonAns
+  );
+  
+  // Si pas de capacité pour SCPI crédit, allocation redistribuée sur les autres enveloppes
+  let scpiCredit: ScpiCreditDetails;
+  let investmentAllocationAdjusted: {
+    assuranceVie: { allocation: number; rendement: number };
+    per: { allocation: number; rendement: number };
+    scpiCash: { allocation: number; rendementDividendes: number; rendementRevalo: number };
+    scpiCredit: { allocation: number; rendementDividendes: number; rendementRevalo: number; tauxCredit: number };
+  };
+  
+  if (!scpiCreditDebt) {
+    // Pas de SCPI crédit possible, redistribution proportionnelle
+    const totalAutres = INVESTMENT_STRATEGY.assuranceVie.allocation + 
+                       INVESTMENT_STRATEGY.per.allocation + 
+                       INVESTMENT_STRATEGY.scpiCash.allocation;
+    const facteurRedistribution = (totalAutres + INVESTMENT_STRATEGY.scpiCredit.allocation) / totalAutres;
+    
+    investmentAllocationAdjusted = {
+      assuranceVie: {
+        allocation: INVESTMENT_STRATEGY.assuranceVie.allocation * facteurRedistribution,
+        rendement: INVESTMENT_STRATEGY.assuranceVie.rendement
+      },
+      per: {
+        allocation: INVESTMENT_STRATEGY.per.allocation * facteurRedistribution,
+        rendement: INVESTMENT_STRATEGY.per.rendement
+      },
+      scpiCash: {
+        allocation: INVESTMENT_STRATEGY.scpiCash.allocation * facteurRedistribution,
+        rendementDividendes: INVESTMENT_STRATEGY.scpiCash.rendementDividendes,
+        rendementRevalo: INVESTMENT_STRATEGY.scpiCash.rendementRevalo
+      },
+      scpiCredit: {
+        allocation: 0,
+        rendementDividendes: INVESTMENT_STRATEGY.scpiCredit.rendementDividendes,
+        rendementRevalo: INVESTMENT_STRATEGY.scpiCredit.rendementRevalo,
+        tauxCredit: INVESTMENT_STRATEGY.scpiCredit.tauxCredit
+      }
+    };
+    
+    scpiCredit = {
+      montantEmprunte: 0,
+      mensualiteCredit: 0,
+      effortNet: 0,
+      nbPartsAchetees: 0,
+      dividendesMensuels: 0,
+      finCreditMois: 0,
+    };
+  } else {
+    // SCPI crédit viable, utiliser les allocations normales
+    investmentAllocationAdjusted = {
+      assuranceVie: {
+        allocation: INVESTMENT_STRATEGY.assuranceVie.allocation,
+        rendement: INVESTMENT_STRATEGY.assuranceVie.rendement
+      },
+      per: {
+        allocation: INVESTMENT_STRATEGY.per.allocation,
+        rendement: INVESTMENT_STRATEGY.per.rendement
+      },
+      scpiCash: {
+        allocation: INVESTMENT_STRATEGY.scpiCash.allocation,
+        rendementDividendes: INVESTMENT_STRATEGY.scpiCash.rendementDividendes,
+        rendementRevalo: INVESTMENT_STRATEGY.scpiCash.rendementRevalo
+      },
+      scpiCredit: {
+        allocation: INVESTMENT_STRATEGY.scpiCredit.allocation,
+        rendementDividendes: INVESTMENT_STRATEGY.scpiCredit.rendementDividendes,
+        rendementRevalo: INVESTMENT_STRATEGY.scpiCredit.rendementRevalo,
+        tauxCredit: INVESTMENT_STRATEGY.scpiCredit.tauxCredit
+      }
+    };
+    
+    scpiCredit = {
+      montantEmprunte: scpiCreditDebt.montantEmpruntSCPI,
+      mensualiteCredit: scpiCreditDebt.mensualiteAvecAssurance,
+      effortNet: scpiCreditDebt.effortNet,
+      nbPartsAchetees: scpiCreditDebt.montantEmpruntSCPI / PRIX_PART_SCPI,
+      dividendesMensuels: scpiCreditDebt.dividendesMensuels,
+      finCreditMois: horizonAns * 12,
+    };
+  }
 
-  // Répartition de l'apport initial entre les 4 enveloppes
-  const apportAV = location.apportInvesti * (INVESTMENT_STRATEGY.assuranceVie.allocation / 100);
-  const apportPER = location.apportInvesti * (INVESTMENT_STRATEGY.per.allocation / 100);
-  const apportSCPICash = location.apportInvesti * (INVESTMENT_STRATEGY.scpiCash.allocation / 100);
-  const apportSCPICredit = location.apportInvesti * (INVESTMENT_STRATEGY.scpiCredit.allocation / 100);
+  // Répartition de l'apport initial entre les enveloppes (selon allocation ajustée)
+  const apportAV = location.apportInvesti * (investmentAllocationAdjusted.assuranceVie.allocation / 100);
+  const apportPER = location.apportInvesti * (investmentAllocationAdjusted.per.allocation / 100);
+  const apportSCPICash = location.apportInvesti * (investmentAllocationAdjusted.scpiCash.allocation / 100);
+  const apportSCPICredit = location.apportInvesti * (investmentAllocationAdjusted.scpiCredit.allocation / 100);
 
   // Initialisation des capitaux par enveloppe
   let capitalAV = apportAV;
@@ -174,13 +337,13 @@ export function runSimulation(params: SimulationParams): SimulationResult {
   const tauxMensuelCredit = achat.tauxCredit / 100 / 12;
   
   // Taux mensuels pour chaque enveloppe
-  const tauxMensuelAV = INVESTMENT_STRATEGY.assuranceVie.rendement / 100 / 12;
-  const tauxMensuelPER = INVESTMENT_STRATEGY.per.rendement / 100 / 12;
-  const tauxMensuelSCPICashDividendes = INVESTMENT_STRATEGY.scpiCash.rendementDividendes / 100 / 12;
-  const tauxMensuelSCPICashRevalo = INVESTMENT_STRATEGY.scpiCash.rendementRevalo / 100 / 12;
-  const tauxMensuelSCPICreditDividendes = INVESTMENT_STRATEGY.scpiCredit.rendementDividendes / 100 / 12;
-  const tauxMensuelSCPICreditRevalo = INVESTMENT_STRATEGY.scpiCredit.rendementRevalo / 100 / 12;
-  const tauxMensuelCreditSCPI = INVESTMENT_STRATEGY.scpiCredit.tauxCredit / 100 / 12;
+  const tauxMensuelAV = investmentAllocationAdjusted.assuranceVie.rendement / 100 / 12;
+  const tauxMensuelPER = investmentAllocationAdjusted.per.rendement / 100 / 12;
+  const tauxMensuelSCPICashDividendes = investmentAllocationAdjusted.scpiCash.rendementDividendes / 100 / 12;
+  const tauxMensuelSCPICashRevalo = investmentAllocationAdjusted.scpiCash.rendementRevalo / 100 / 12;
+  const tauxMensuelSCPICreditDividendes = investmentAllocationAdjusted.scpiCredit.rendementDividendes / 100 / 12;
+  const tauxMensuelSCPICreditRevalo = investmentAllocationAdjusted.scpiCredit.rendementRevalo / 100 / 12;
+  const tauxMensuelCreditSCPI = investmentAllocationAdjusted.scpiCredit.tauxCredit / 100 / 12;
 
   for (let m = 1; m <= totalMonths; m++) {
     const year = Math.ceil(m / 12);
@@ -212,11 +375,11 @@ export function runSimulation(params: SimulationParams): SimulationResult {
     loyersCumules += loyerActuel;
     coutTotalLocation += loyerActuel;
 
-    // Répartition mensuelle entre enveloppes
-    let invAV = investissementMensuelTotal * (INVESTMENT_STRATEGY.assuranceVie.allocation / 100);
-    let invPER = investissementMensuelTotal * (INVESTMENT_STRATEGY.per.allocation / 100);
-    let invSCPICash = investissementMensuelTotal * (INVESTMENT_STRATEGY.scpiCash.allocation / 100);
-    let invSCPICredit = investissementMensuelTotal * (INVESTMENT_STRATEGY.scpiCredit.allocation / 100);
+    // Répartition mensuelle entre enveloppes (selon allocation ajustée)
+    let invAV = investissementMensuelTotal * (investmentAllocationAdjusted.assuranceVie.allocation / 100);
+    let invPER = investissementMensuelTotal * (investmentAllocationAdjusted.per.allocation / 100);
+    let invSCPICash = investissementMensuelTotal * (investmentAllocationAdjusted.scpiCash.allocation / 100);
+    let invSCPICredit = investissementMensuelTotal * (investmentAllocationAdjusted.scpiCredit.allocation / 100);
 
     // Phase SCPI Crédit
     let cashFlowLibere = 0;
@@ -251,10 +414,14 @@ export function runSimulation(params: SimulationParams): SimulationResult {
       capitalSCPICredit = capitalSCPICredit * (1 + tauxMensuelSCPICreditRevalo) + dividendesSCPICredit;
       
       // Répartition du cash flow libéré proportionnellement aux autres enveloppes
-      const totalAutres = INVESTMENT_STRATEGY.assuranceVie.allocation + INVESTMENT_STRATEGY.per.allocation + INVESTMENT_STRATEGY.scpiCash.allocation;
-      capitalAV += cashFlowLibere * (INVESTMENT_STRATEGY.assuranceVie.allocation / totalAutres);
-      capitalPER += cashFlowLibere * (INVESTMENT_STRATEGY.per.allocation / totalAutres);
-      capitalSCPICash += cashFlowLibere * (INVESTMENT_STRATEGY.scpiCash.allocation / totalAutres);
+      const totalAutres = investmentAllocationAdjusted.assuranceVie.allocation + 
+                         investmentAllocationAdjusted.per.allocation + 
+                         investmentAllocationAdjusted.scpiCash.allocation;
+      if (totalAutres > 0) {
+        capitalAV += cashFlowLibere * (investmentAllocationAdjusted.assuranceVie.allocation / totalAutres);
+        capitalPER += cashFlowLibere * (investmentAllocationAdjusted.per.allocation / totalAutres);
+        capitalSCPICash += cashFlowLibere * (investmentAllocationAdjusted.scpiCash.allocation / totalAutres);
+      }
     }
 
     // Patrimoine location = somme de toutes les enveloppes - dette SCPI restante
@@ -309,10 +476,57 @@ export function runSimulation(params: SimulationParams): SimulationResult {
 
 /**
  * Calcule les détails SCPI crédit pour l'affichage dans l'interface
+ * Utilise maintenant le calcul basé sur la capacité d'endettement 
  */
-export function getScpiCreditDetails(investissementMensuel: number): ScpiCreditDetails {
+export function getScpiCreditDetails(
+  investissementMensuel: number, 
+  params?: { revenus?: number; loyer?: number; chargesCredits?: number; horizon?: number }
+): ScpiCreditDetails {
+  // Si les paramètres de capacité sont fournis, utiliser le calcul debt-based
+  if (params?.revenus && params?.loyer !== undefined && params?.chargesCredits !== undefined && params?.horizon) {
+    const scpiCreditDebt = calculateDebtBasedScpiCredit(
+      params.revenus,
+      params.loyer, 
+      params.chargesCredits,
+      params.horizon
+    );
+    
+    if (scpiCreditDebt) {
+      return {
+        montantEmprunte: scpiCreditDebt.montantEmpruntSCPI,
+        mensualiteCredit: scpiCreditDebt.mensualiteAvecAssurance,
+        effortNet: scpiCreditDebt.effortNet,
+        nbPartsAchetees: scpiCreditDebt.montantEmpruntSCPI / PRIX_PART_SCPI,
+        dividendesMensuels: scpiCreditDebt.dividendesMensuels,
+        finCreditMois: params.horizon * 12,
+      };
+    } else {
+      // Pas de capacité pour SCPI crédit
+      return {
+        montantEmprunte: 0,
+        mensualiteCredit: 0,
+        effortNet: 0,
+        nbPartsAchetees: 0,
+        dividendesMensuels: 0,
+        finCreditMois: 0,
+      };
+    }
+  }
+  
+  // Fallback sur l'ancien calcul par allocation (pour compatibilité)
   const allocationSCPICredit = investissementMensuel * (INVESTMENT_STRATEGY.scpiCredit.allocation / 100);
-  return calcScpiCreditDetails(allocationSCPICredit);
+  try {
+    return calcScpiCreditDetails(allocationSCPICredit, 25); // Utilise 25 ans par défaut
+  } catch {
+    return {
+      montantEmprunte: 0,
+      mensualiteCredit: 0,
+      effortNet: 0,
+      nbPartsAchetees: 0,
+      dividendesMensuels: 0,
+      finCreditMois: 0,
+    };
+  }
 }
 
 /**

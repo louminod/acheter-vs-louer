@@ -7,7 +7,8 @@ export const DEFAULTS = {
   isNeuf: false,
   tauxRevalorisation: 2,
   augmentationLoyer: 2,
-  rendementPlacement: 4, // DEPRECATED - remplacé par stratégie mixte
+  revenusMensuels: 3000,
+  chargesCredits: 0,
   horizonAns: 25,
 };
 
@@ -20,6 +21,7 @@ export const TAUX_ASSURANCE_PNO = 0.002; // 0.2% du prix/an
 export const TAUX_ENTRETIEN = 0.01; // 1% du prix/an
 export const TAUX_ASSURANCE_EMPRUNTEUR = 0.003; // 0.3% du capital/an
 export const RATIO_LOYER_PRIX = 0.004; // loyer mensuel ≈ 0.4% du prix
+export const TAUX_ENDETTEMENT_MAX = 0.35; // 35% taux d'endettement HCSF
 
 // Stratégie d'investissement blended
 export const INVESTMENT_STRATEGY = {
@@ -41,7 +43,7 @@ export const INVESTMENT_STRATEGY = {
     rendementDividendes: 5.5, // % dividendes/an
     rendementRevalo: 1, // % revalorisation/an
     tauxCredit: 5.35, // % crédit/an
-    dureeCreditAns: 25, // années
+    // dureeCreditAns sera égale au horizon de simulation
   },
 } as const;
 

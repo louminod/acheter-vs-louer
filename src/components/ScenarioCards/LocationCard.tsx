@@ -1,16 +1,18 @@
 "use client";
 import { LocationParams, SimulationResult } from "@/lib/types";
 import { fmt } from "@/lib/formatters";
-import { getInvestmentStrategy, getRendementBlended, getScpiCreditDetails } from "@/lib/simulation";
+import { getInvestmentStrategy, getRendementBlended, getScpiCreditDetails, calculateDebtBasedScpiCredit } from "@/lib/simulation";
+import { TAUX_ENDETTEMENT_MAX } from "@/lib/constants";
 
 interface Props {
   params: LocationParams;
   result: SimulationResult;
   coutMensuelAchat: number;
+  horizonAns: number;
   onChange: (updates: Partial<LocationParams>) => void;
 }
 
-export default function LocationCard({ params, result, coutMensuelAchat, onChange }: Props) {
+export default function LocationCard({ params, result, coutMensuelAchat, horizonAns, onChange }: Props) {
   return (
     <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 md:p-6">
       <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
@@ -50,12 +52,50 @@ export default function LocationCard({ params, result, coutMensuelAchat, onChang
           onChange={(e) => onChange({ augmentationLoyer: Number(e.target.value) })} />
       </div>
 
+      {/* Nouveaux champs de capacité de crédit */}
+      <div className="mb-4 p-4 bg-[var(--accent)]/10 border border-[var(--accent)]/20 rounded-lg">
+        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+          💳 Capacité d'endettement SCPI Crédit
+        </h3>
+        
+        <div className="mb-3">
+          <label className="flex justify-between text-sm mb-1">
+            <span className="text-[var(--muted)]">Revenus mensuels nets</span>
+            <span className="font-medium">{fmt(params.revenusMensuels)}/mois</span>
+          </label>
+          <input type="range" className="w-full" min={1000} max={10000} step={100}
+            value={params.revenusMensuels}
+            onChange={(e) => onChange({ revenusMensuels: Number(e.target.value) })} />
+        </div>
+
+        <div className="mb-3">
+          <label className="flex justify-between text-sm mb-1">
+            <span className="text-[var(--muted)]">Charges de crédits existants</span>
+            <span className="font-medium">{fmt(params.chargesCredits)}/mois</span>
+          </label>
+          <input type="range" className="w-full" min={0} max={3000} step={50}
+            value={params.chargesCredits}
+            onChange={(e) => onChange({ chargesCredits: Number(e.target.value) })} />
+        </div>
+
+        <DebtRatioDisplay 
+          revenus={params.revenusMensuels} 
+          loyerMensuel={params.loyerMensuel}
+          chargesCredits={params.chargesCredits}
+          investissementMensuel={result.investissementMensuel}
+        />
+      </div>
+
       {/* Stratégie d'investissement blended */}
       <div className="mb-4">
         <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
           🎯 Stratégie d&apos;investissement
         </h3>
-        <StrategyDisplay investissementMensuel={result.investissementMensuel} />
+        <StrategyDisplay 
+          investissementMensuel={result.investissementMensuel}
+          locationParams={params}
+          horizonAns={horizonAns}
+        />
       </div>
 
       {/* Résumé calculé */}
@@ -85,15 +125,28 @@ export default function LocationCard({ params, result, coutMensuelAchat, onChang
 /**
  * Affiche la stratégie d'investissement blended avec détails
  */
-function StrategyDisplay({ investissementMensuel }: { investissementMensuel: number }) {
+function StrategyDisplay({ 
+  investissementMensuel, 
+  locationParams,
+  horizonAns 
+}: { 
+  investissementMensuel: number;
+  locationParams: LocationParams;
+  horizonAns: number;
+}) {
   const strategy = getInvestmentStrategy();
   const rendementBlended = getRendementBlended();
   
   let scpiCredit;
   try {
-    scpiCredit = getScpiCreditDetails(investissementMensuel);
+    scpiCredit = getScpiCreditDetails(investissementMensuel, {
+      revenus: locationParams.revenusMensuels,
+      loyer: locationParams.loyerMensuel,
+      chargesCredits: locationParams.chargesCredits,
+      horizon: horizonAns
+    });
   } catch (error) {
-    // Si calcul impossible (dividendes > mensualité), on affiche une version simplifiée
+    // Si calcul impossible, pas de SCPI crédit
     scpiCredit = null;
   }
 
@@ -200,7 +253,83 @@ function StrategyDisplay({ investissementMensuel }: { investissementMensuel: num
             </div>
           </div>
           <div className="text-[10px] text-[var(--muted)] mt-2 italic">
-            * Deux phases: effort réduit pendant {strategy.scpiCredit.dureeCreditAns} ans, puis dividendes libérés
+            * Deux phases: effort réduit pendant le crédit, puis dividendes libérés
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Affiche les calculs de capacité d'endettement et SCPI crédit
+ */
+function DebtRatioDisplay({ 
+  revenus, 
+  loyerMensuel, 
+  chargesCredits, 
+  investissementMensuel 
+}: { 
+  revenus: number; 
+  loyerMensuel: number; 
+  chargesCredits: number; 
+  investissementMensuel: number; 
+}) {
+  const capaciteMensuelle = revenus * TAUX_ENDETTEMENT_MAX;
+  const disponiblePourSCPI = Math.max(0, capaciteMensuelle - loyerMensuel - chargesCredits);
+  const tauxEndettementActuel = ((loyerMensuel + chargesCredits) / revenus) * 100;
+  
+  let scpiCreditInfo;
+  try {
+    scpiCreditInfo = calculateDebtBasedScpiCredit(revenus, loyerMensuel, chargesCredits, 25); // Utilise 25 ans par défaut pour l'affichage
+  } catch (error) {
+    scpiCreditInfo = null;
+  }
+
+  return (
+    <div className="space-y-2 text-xs">
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <span className="text-[var(--muted)]">Taux d'endettement actuel:</span>
+          <div className={`font-medium ${tauxEndettementActuel > 35 ? 'text-red-500' : 'text-[var(--green)]'}`}>
+            {tauxEndettementActuel.toFixed(1)}%
+          </div>
+        </div>
+        <div>
+          <span className="text-[var(--muted)]">Capacité mensuelle (35%):</span>
+          <div className="font-medium">{fmt(capaciteMensuelle)}</div>
+        </div>
+        <div>
+          <span className="text-[var(--muted)]">Disponible pour SCPI:</span>
+          <div className="font-medium">{fmt(disponiblePourSCPI)}</div>
+        </div>
+        <div>
+          <span className="text-[var(--muted)]">Montant empruntable SCPI:</span>
+          <div className="font-medium text-[var(--accent)]">
+            {scpiCreditInfo ? fmt(scpiCreditInfo.montantEmpruntSCPI) : '0€'}
+          </div>
+        </div>
+      </div>
+      
+      {disponiblePourSCPI <= 0 && (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-2 text-red-500">
+          <p className="text-xs">
+            ⚠️ Capacité d'endettement dépassée. Aucun SCPI crédit possible.
+          </p>
+        </div>
+      )}
+      
+      {scpiCreditInfo && disponiblePourSCPI > 0 && (
+        <div className="bg-[var(--green)]/10 border border-[var(--green)]/20 rounded-lg p-2">
+          <div className="grid grid-cols-2 gap-1 text-[10px]">
+            <div>
+              <span className="text-[var(--muted)]">Mensualité crédit+assurance:</span>
+              <div className="font-medium">{fmt(scpiCreditInfo.mensualiteAvecAssurance)}</div>
+            </div>
+            <div>
+              <span className="text-[var(--muted)]">Dividendes SCPI mensuels:</span>
+              <div className="font-medium">{fmt(scpiCreditInfo.dividendesMensuels)}</div>
+            </div>
           </div>
         </div>
       )}

@@ -27,7 +27,7 @@ export default function Hero({ result, horizonAns, onHorizonChange }: Props) {
           <span className="text-[var(--muted)]">Horizon de comparaison</span>
           <span className="font-semibold text-white">{horizonAns} ans</span>
         </label>
-        <input type="range" className="w-full" min={5} max={40} step={1}
+        <input type="range" className="w-full" min={5} max={40} step={5}
           value={horizonAns}
           onChange={(e) => onHorizonChange(Number(e.target.value))} />
       </div>

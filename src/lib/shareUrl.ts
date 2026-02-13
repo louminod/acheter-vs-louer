@@ -3,7 +3,7 @@ import { DEFAULTS } from "./constants";
 
 const KEYS = [
   "px", "ap", "tc", "dc", "sf", "nf", "rv",
-  "ly", "al", "ai", "hz",
+  "ly", "al", "ai", "rm", "cc", "hz",
 ] as const;
 
 export function encodeParams(p: SimulationParams): string {
@@ -11,7 +11,7 @@ export function encodeParams(p: SimulationParams): string {
     p.achat.prixBien, p.achat.apport, p.achat.tauxCredit, p.achat.dureeCredit,
     p.achat.surface, p.achat.isNeuf ? 1 : 0, p.achat.tauxRevalorisation,
     p.location.loyerMensuel, p.location.augmentationLoyer,
-    p.location.apportInvesti, p.horizonAns,
+    p.location.apportInvesti, p.location.revenusMensuels, p.location.chargesCredits, p.horizonAns,
   ];
   const parts = KEYS.map((k, i) => `${k}=${vals[i]}`);
   return parts.join("&");
@@ -24,7 +24,8 @@ export function decodeParams(search: string): Partial<SimulationParams> | null {
 
   const px = g("px"), ap = g("ap"), tc = g("tc"), dc = g("dc");
   const sf = g("sf"), nf = g("nf"), rv = g("rv");
-  const ly = g("ly"), al = g("al"), ai = g("ai"), hz = g("hz");
+  const ly = g("ly"), al = g("al"), ai = g("ai");
+  const rm = g("rm"), cc = g("cc"), hz = g("hz");
 
   if (px === undefined) return null;
 
@@ -42,7 +43,8 @@ export function decodeParams(search: string): Partial<SimulationParams> | null {
       loyerMensuel: ly ?? px * 0.004,
       augmentationLoyer: al ?? DEFAULTS.augmentationLoyer,
       apportInvesti: ai ?? ap ?? DEFAULTS.apport,
-      // rendementPlacement supprimé - maintenant calculé automatiquement
+      revenusMensuels: rm ?? DEFAULTS.revenusMensuels,
+      chargesCredits: cc ?? DEFAULTS.chargesCredits,
     },
     horizonAns: hz ?? DEFAULTS.horizonAns,
   };

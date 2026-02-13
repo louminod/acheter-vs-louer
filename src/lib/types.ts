@@ -55,8 +55,8 @@ export interface LocationParams {
   loyerMensuel: number;
   augmentationLoyer: number; // annuel en %
   apportInvesti: number; // montant investi dès le départ
-  /** Calculé automatiquement - ne doit plus être user-input */
-  rendementPlacement?: number; // annuel net en % - DEPRECATED
+  revenusMensuels: number; // revenus mensuels nets en euros
+  chargesCredits: number; // charges de crédits existants en euros/mois
 }
 
 export interface SimulationParams {

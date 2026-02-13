@@ -22,6 +22,7 @@ export default function Home() {
           params={params.location}
           result={result}
           coutMensuelAchat={result.coutMensuelTotalAchat}
+          horizonAns={params.horizonAns}
           onChange={updateLocation}
         />
       </div>
