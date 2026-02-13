@@ -5,9 +5,10 @@ import { fmt } from "@/lib/formatters";
 interface Props {
   result: SimulationResult;
   horizonAns: number;
+  onHorizonChange: (v: number) => void;
 }
 
-export default function Hero({ result, horizonAns }: Props) {
+export default function Hero({ result, horizonAns, onHorizonChange }: Props) {
   const achatWins = result.patrimoineNetAchat > result.patrimoineNetLocation;
   const diff = Math.abs(result.patrimoineNetAchat - result.patrimoineNetLocation);
 
@@ -16,9 +17,20 @@ export default function Hero({ result, horizonAns }: Props) {
       <h1 className="text-2xl md:text-4xl font-bold mb-2">
         Acheter ou Louer ?
       </h1>
-      <p className="text-[var(--muted)] mb-8 text-sm md:text-base">
+      <p className="text-[var(--muted)] mb-6 text-sm md:text-base">
         Simulez les deux scénarios sur la durée et comparez votre patrimoine net
       </p>
+
+      {/* Horizon slider */}
+      <div className="max-w-md mx-auto mb-8">
+        <label className="flex justify-between text-sm mb-1">
+          <span className="text-[var(--muted)]">Horizon de comparaison</span>
+          <span className="font-semibold text-white">{horizonAns} ans</span>
+        </label>
+        <input type="range" className="w-full" min={5} max={40} step={1}
+          value={horizonAns}
+          onChange={(e) => onHorizonChange(Number(e.target.value))} />
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div className={`rounded-xl p-6 border ${achatWins ? "border-[var(--green)] bg-[var(--green)]/5" : "border-[var(--border)] bg-[var(--card)]"}`}>

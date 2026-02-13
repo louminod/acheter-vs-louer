@@ -33,9 +33,12 @@ function Field({ label, value, onChange, min, max, step, suffix }: {
 export default function AchatCard({ params, result, onChange }: Props) {
   return (
     <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 md:p-6">
-      <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+      <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
         🏠 Scénario Achat
       </h2>
+      <p className="text-xs text-[var(--muted)] mb-4">
+        Votre capacité d&apos;endettement est utilisée au maximum pour financer le bien.
+      </p>
 
       <Field label="Prix du bien" value={params.prixBien} onChange={(v) => onChange({ prixBien: v })}
         min={50000} max={1000000} step={5000} suffix="€" />
@@ -95,8 +98,19 @@ export default function AchatCard({ params, result, onChange }: Props) {
       {/* Résumé calculé */}
       <div className="mt-4 pt-4 border-t border-[var(--border)] space-y-2 text-sm">
         <div className="flex justify-between"><span className="text-[var(--muted)]">Frais de notaire</span><span>{fmt(result.fraisNotaire)}</span></div>
-        <div className="flex justify-between"><span className="text-[var(--muted)]">Mensualité crédit</span><span className="font-semibold text-[var(--accent)]">{fmt(result.mensualiteCredit)}/mois</span></div>
-        <div className="flex justify-between"><span className="text-[var(--muted)]">Coût mensuel total</span><span className="font-semibold">{fmt(result.coutMensuelTotalAchat)}/mois</span></div>
+        <div className="flex justify-between">
+          <span className="text-[var(--muted)]">Mensualité crédit</span>
+          <span className="font-semibold text-[var(--accent)]">{fmt(result.mensualiteCredit)}/mois</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-[var(--muted)]">Coût mensuel total</span>
+          <span className="font-semibold">{fmt(result.coutMensuelTotalAchat)}/mois</span>
+        </div>
+        <div className="bg-[var(--accent)]/10 border border-[var(--accent)]/20 rounded-lg p-2.5 mt-2">
+          <p className="text-[10px] text-[var(--muted)]">
+            💡 <strong className="text-[var(--accent)]">Capacité d&apos;endettement : {fmt(result.mensualiteCredit)}/mois</strong> — C&apos;est ce montant qui sera comparé au loyer dans le scénario location.
+          </p>
+        </div>
       </div>
     </div>
   );

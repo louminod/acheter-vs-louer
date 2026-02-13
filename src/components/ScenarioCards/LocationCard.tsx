@@ -8,16 +8,17 @@ interface Props {
   result: SimulationResult;
   apport: number;
   onChange: (updates: Partial<LocationParams>) => void;
-  horizonAns: number;
-  onHorizonChange: (v: number) => void;
 }
 
-export default function LocationCard({ params, result, apport, onChange, horizonAns, onHorizonChange }: Props) {
+export default function LocationCard({ params, result, apport, onChange }: Props) {
   return (
     <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 md:p-6">
-      <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+      <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
         📈 Scénario Location + Investissement
       </h2>
+      <p className="text-xs text-[var(--muted)] mb-4">
+        Vous louez et investissez la différence entre votre capacité d&apos;endettement et le loyer.
+      </p>
 
       <div className="mb-4">
         <label className="flex justify-between text-sm mb-1">
@@ -49,16 +50,6 @@ export default function LocationCard({ params, result, apport, onChange, horizon
           onChange={(e) => onChange({ rendementPlacement: Number(e.target.value) })} />
       </div>
 
-      <div className="mb-4">
-        <label className="flex justify-between text-sm mb-1">
-          <span className="text-[var(--muted)]">Horizon de comparaison</span>
-          <span className="font-medium">{horizonAns} ans</span>
-        </label>
-        <input type="range" className="w-full" min={5} max={40} step={1}
-          value={horizonAns}
-          onChange={(e) => onHorizonChange(Number(e.target.value))} />
-      </div>
-
       {/* Résumé calculé */}
       <div className="mt-4 pt-4 border-t border-[var(--border)] space-y-2 text-sm">
         <div className="flex justify-between">
@@ -66,12 +57,22 @@ export default function LocationCard({ params, result, apport, onChange, horizon
           <span>{fmt(apport)}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-[var(--muted)]">Investissement mensuel</span>
-          <span className="font-semibold text-[var(--green)]">{fmt(result.investissementMensuel)}/mois</span>
+          <span className="text-[var(--muted)]">Capacité d&apos;endettement</span>
+          <span>{fmt(result.mensualiteCredit)}/mois</span>
         </div>
-        <p className="text-xs text-[var(--muted)] italic">
-          Soit la différence entre le coût mensuel de l&apos;achat ({fmt(result.coutMensuelTotalAchat)}) et votre loyer ({fmt(params.loyerMensuel)})
-        </p>
+        <div className="flex justify-between">
+          <span className="text-[var(--muted)]">Loyer</span>
+          <span>- {fmt(params.loyerMensuel)}/mois</span>
+        </div>
+        <div className="flex justify-between border-t border-[var(--border)] pt-2">
+          <span className="font-medium">Investissement mensuel</span>
+          <span className="font-bold text-[var(--green)]">{fmt(result.investissementMensuel)}/mois</span>
+        </div>
+        <div className="bg-[var(--green)]/10 border border-[var(--green)]/20 rounded-lg p-2.5">
+          <p className="text-[10px] text-[var(--muted)]">
+            💡 Chaque mois, la différence entre votre capacité d&apos;endettement ({fmt(result.mensualiteCredit)}) et votre loyer ({fmt(params.loyerMensuel)}) est placée à {params.rendementPlacement}% net. L&apos;apport de {fmt(apport)} est également investi dès le départ.
+          </p>
+        </div>
       </div>
     </div>
   );

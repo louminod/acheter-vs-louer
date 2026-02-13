@@ -14,7 +14,7 @@ export default function Home() {
 
   return (
     <main className="max-w-6xl mx-auto px-4 py-8 md:py-12">
-      <Hero result={result} horizonAns={params.horizonAns} />
+      <Hero result={result} horizonAns={params.horizonAns} onHorizonChange={setHorizon} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <AchatCard params={params.achat} result={result} onChange={updateAchat} />
@@ -23,8 +23,6 @@ export default function Home() {
           result={result}
           apport={params.achat.apport}
           onChange={updateLocation}
-          horizonAns={params.horizonAns}
-          onHorizonChange={setHorizon}
         />
       </div>
 
